@@ -18,6 +18,7 @@ package com.example.shyam.popi;
 
 import android.app.Fragment;
 import android.app.FragmentManager;
+import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.v13.app.FragmentPagerAdapter;
@@ -25,8 +26,13 @@ import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.NavUtils;
 import android.support.v4.view.PagerAdapter;
 import android.support.v4.view.ViewPager;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.ImageView;
+import android.widget.TextView;
 
 
 /**
@@ -56,7 +62,9 @@ public class LearnEmotions extends FragmentActivity {
      * The pager adapter, which provides the pages to the view pager widget.
      */
     private PagerAdapter mPagerAdapter;
-
+    String[] emotions;
+    int[] smiley;
+    int[] audio;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -64,7 +72,10 @@ public class LearnEmotions extends FragmentActivity {
 
         // Instantiate a ViewPager and a PagerAdapter.
         mPager = (ViewPager) findViewById(R.id.pager);
-        mPagerAdapter = new ScreenSlidePagerAdapter(getFragmentManager());
+        emotions = new String[]{"Smile","Sad"};
+        smiley  = new int[]{R.drawable.smile,R.drawable.sad};
+        audio = new int[]{R.raw.laugh,0};
+        mPagerAdapter = new ScreenSlidePagerAdapter(getFragmentManager(),emotions,smiley,audio);
         mPager.setAdapter(mPagerAdapter);
         mPager.setOnPageChangeListener(new ViewPager.SimpleOnPageChangeListener() {
             @Override
@@ -125,14 +136,52 @@ public class LearnEmotions extends FragmentActivity {
      * sequence.
      */
     private class ScreenSlidePagerAdapter extends FragmentPagerAdapter {
-        public ScreenSlidePagerAdapter(FragmentManager fm) {
+        String[] emotions;
+        int[] smiley;
+        int[] audio;
+
+        LayoutInflater inflater;
+        public ScreenSlidePagerAdapter(FragmentManager fm,String[] emotions,int[] smiley,int[] audio) {
             super(fm);
+
+            this.emotions = emotions;
+            this.smiley = smiley;
+            this.audio = audio;
         }
 
+
+        @Override
+        public Object instantiateItem(ViewGroup container, int position) {
+            // Declare Variables
+            TextView emotion;
+            ImageView imgsmiley;
+
+            inflater = (LayoutInflater) getApplicationContext().getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+            View itemView = inflater.inflate(R.layout.fragment_screen_slide_page, container,
+                    false);
+
+            // Locate the TextViews in viewpager_item.xml
+            emotion = (TextView) itemView.findViewById(R.id.emotion);
+
+            // Capture position and set to the TextViews
+            emotion.setText(emotions[position]);
+
+
+            // Locate the ImageView in viewpager_item.xml
+            imgsmiley = (ImageView) itemView.findViewById(R.id.smiley);
+            // Capture position and set to the ImageView
+            imgsmiley.setImageResource(smiley[position]);
+
+            // Add viewpager_item.xml to ViewPager
+            ((ViewPager) container).addView(itemView);
+
+            return itemView;
+        }
         @Override
         public Fragment getItem(int position) {
             return ScreenSlidePageFragment.create(position);
         }
+        
 
         @Override
         public int getCount() {
