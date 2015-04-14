@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android" >
+<item>
+    <shape android:src="@drawable/login_button"/>
+
+</item>
+<item>
+    <shape xmlns:android="http://schemas.android.com/apk/res/android">
+        <gradient android:angle="90" android:startColor="#ffcccccc"  android:endColor="#ffffffff"/>
+        <corners android:radius="10dp" />
+
+    </shape>
+</item>
+</layer-list>

@@ -20,19 +20,27 @@ import android.app.Fragment;
 import android.app.FragmentManager;
 import android.content.Context;
 import android.content.Intent;
+import android.media.AudioManager;
+import android.media.MediaPlayer;
 import android.os.Bundle;
+import android.os.Handler;
 import android.support.v13.app.FragmentPagerAdapter;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.NavUtils;
 import android.support.v4.view.PagerAdapter;
 import android.support.v4.view.ViewPager;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
+import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 
 /**
@@ -50,7 +58,7 @@ public class LearnEmotions extends FragmentActivity {
     /**
      * The number of pages (wizard steps) to show in this demo.
      */
-    private static final int NUM_PAGES = 5;
+    private static final int NUM_PAGES = 4;
 
     /**
      * The pager widget, which handles animation and allows swiping horizontally to access previous
@@ -68,14 +76,15 @@ public class LearnEmotions extends FragmentActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
         setContentView(R.layout.activity_screen_slide);
 
         // Instantiate a ViewPager and a PagerAdapter.
         mPager = (ViewPager) findViewById(R.id.pager);
-        emotions = new String[]{"Smile","Sad"};
-        smiley  = new int[]{R.drawable.smile,R.drawable.sad};
-        audio = new int[]{R.raw.laugh,0};
-        mPagerAdapter = new ScreenSlidePagerAdapter(getFragmentManager(),emotions,smiley,audio);
+        emotions = new String[]{"Smile","Sad","Angry","Tired"};
+        smiley  = new int[]{R.drawable.smile,R.drawable.sad,R.drawable.angry,R.drawable.tired};
+        audio = new int[]{R.raw.laugh,R.raw.sad_effect,R.raw.angry_effect,R.raw.tired_effect};
+        mPagerAdapter = new ScreenSlidePagerAdapter(getApplicationContext(),emotions,smiley,audio);
         mPager.setAdapter(mPagerAdapter);
         mPager.setOnPageChangeListener(new ViewPager.SimpleOnPageChangeListener() {
             @Override
@@ -92,6 +101,7 @@ public class LearnEmotions extends FragmentActivity {
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         super.onCreateOptionsMenu(menu);
+        setVolumeControlStream(AudioManager.STREAM_MUSIC);
         getMenuInflater().inflate(R.menu.activity_screen_slide, menu);
 
         menu.findItem(R.id.action_previous).setEnabled(mPager.getCurrentItem() > 0);
@@ -102,7 +112,7 @@ public class LearnEmotions extends FragmentActivity {
                 (mPager.getCurrentItem() == mPagerAdapter.getCount() - 1)
                         ? R.string.action_finish
                         : R.string.action_next);
-        item.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM | MenuItem.SHOW_AS_ACTION_WITH_TEXT);
+        item.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS | MenuItem.SHOW_AS_ACTION_WITH_TEXT);
         return true;
     }
 
@@ -124,8 +134,18 @@ public class LearnEmotions extends FragmentActivity {
             case R.id.action_next:
                 // Advance to the next step in the wizard. If there is no next step, setCurrentItem
                 // will do nothing.
+                if(item.getTitle()==getResources().getString(R.string.action_finish)){
+                    Toast.makeText(getApplicationContext(),"You are finished",Toast.LENGTH_SHORT).show();
+                    new Handler().postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            NavUtils.navigateUpTo(LearnEmotions.this, new Intent(LearnEmotions.this, MainActivity.class));
+                        }
+                    }, 3000);
+                }
                 mPager.setCurrentItem(mPager.getCurrentItem() + 1);
                 return true;
+
         }
 
         return super.onOptionsItemSelected(item);
@@ -135,15 +155,16 @@ public class LearnEmotions extends FragmentActivity {
      * A simple pager adapter that represents 5 {@link ScreenSlidePageFragment} objects, in
      * sequence.
      */
-    private class ScreenSlidePagerAdapter extends FragmentPagerAdapter {
+    private class ScreenSlidePagerAdapter extends PagerAdapter {
         String[] emotions;
         int[] smiley;
         int[] audio;
-
+        Context ctx;
         LayoutInflater inflater;
-        public ScreenSlidePagerAdapter(FragmentManager fm,String[] emotions,int[] smiley,int[] audio) {
-            super(fm);
-
+        MediaPlayer mp;
+        public ScreenSlidePagerAdapter(Context context,String[] emotions,int[] smiley,int[] audio) {
+            //super(fm);
+            this.ctx = context;
             this.emotions = emotions;
             this.smiley = smiley;
             this.audio = audio;
@@ -151,11 +172,11 @@ public class LearnEmotions extends FragmentActivity {
 
 
         @Override
-        public Object instantiateItem(ViewGroup container, int position) {
+        public Object instantiateItem(ViewGroup container, final int position) {
             // Declare Variables
             TextView emotion;
             ImageView imgsmiley;
-
+            Button playEmotions;
             inflater = (LayoutInflater) getApplicationContext().getSystemService(Context.LAYOUT_INFLATER_SERVICE);
             View itemView = inflater.inflate(R.layout.fragment_screen_slide_page, container,
                     false);
@@ -172,16 +193,47 @@ public class LearnEmotions extends FragmentActivity {
             // Capture position and set to the ImageView
             imgsmiley.setImageResource(smiley[position]);
 
+            playEmotions = (Button) itemView.findViewById(R.id.play);
+            if(audio[position]==0){
+                playEmotions.setVisibility(View.INVISIBLE);
+            }else {
+                playEmotions.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+
+                        AudioManager audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+                        int currentVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
+                        if(currentVolume==0)
+                            Toast.makeText(getApplicationContext(),R.string.turnvolume,Toast.LENGTH_LONG).show();
+
+                        try {
+                        mp = MediaPlayer.create(getApplicationContext(), audio[position]);
+                        if(mp.isPlaying())
+                            mp.stop();
+                        mp.start();
+
+                        }catch (Exception e){
+                            e.printStackTrace();
+                        }
+                    }
+                });
+            }
             // Add viewpager_item.xml to ViewPager
             ((ViewPager) container).addView(itemView);
 
             return itemView;
         }
+
         @Override
-        public Fragment getItem(int position) {
-            return ScreenSlidePageFragment.create(position);
+        public boolean isViewFromObject(View view, Object object) {
+            return view == ((LinearLayout) object);
         }
-        
+        @Override
+        public void destroyItem(ViewGroup container, int position, Object object) {
+            // Remove viewpager_item.xml from ViewPager
+            ((ViewPager) container).removeView((LinearLayout) object);
+
+        }
 
         @Override
         public int getCount() {
